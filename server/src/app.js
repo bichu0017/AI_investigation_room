@@ -3,13 +3,13 @@ const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const dotenv = require('dotenv');
+const path = require('path');
 const { z } = require('zod');
 
 const { generateCaseFromGemini } = require('./services/generateCase');
 const { computeScore, buildScoreBreakdown, DIFFICULTY_CONFIG } = require('./services/scoring');
 const { generateCaseSchema, accuseSchema } = require('./validators/schemas');
 const { saveCase, getCase } = require('./store/caseStore');
-const { connectMongo } = require('./config/db');
 
 dotenv.config();
 
@@ -316,6 +316,16 @@ app.get('/api/cases/:id/result', async (req, res) => {
   return res.json({ result: serializeResult(caseDoc) });
 });
 
+if (process.env.NODE_ENV === 'production') {
+  const clientBuildPath = path.resolve(__dirname, '../../client/dist');
+  app.use(express.static(clientBuildPath, { index: false }));
+  app.get(/^(?!\/api(?:\/|$)).*/, (_req, res, next) => {
+    res.sendFile(path.join(clientBuildPath, 'index.html'), (error) => {
+      if (error) next(error);
+    });
+  });
+}
+
 app.use((req, res) => {
   res.status(404).json({ code: 'NOT_FOUND', message: 'Resource not found.' });
 });
@@ -324,7 +334,5 @@ app.use((error, _req, res, _next) => {
   console.error('Unhandled app error:', error);
   res.status(500).json({ code: 'INTERNAL_ERROR', message: 'An unexpected error occurred.' });
 });
-
-connectMongo();
 
 module.exports = app;

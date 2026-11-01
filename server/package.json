@@ -8,6 +8,9 @@
     "start": "node src/server.js",
     "test": "node --test src/tests/*.js"
   },
+  "engines": {
+    "node": ">=20.19.0"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",

@@ -7,11 +7,18 @@ function isMongoConnected() {
   return mongoose.connection && mongoose.connection.readyState === 1;
 }
 
+function ensureDatabaseAvailable() {
+  if (process.env.NODE_ENV === 'production' && !isMongoConnected()) {
+    throw new Error('MongoDB is not connected; case data cannot be accessed.');
+  }
+}
+
 async function saveCase(caseDoc) {
   if (!caseDoc || !caseDoc.publicId) {
     return caseDoc;
   }
 
+  ensureDatabaseAvailable();
   // Always update in-memory cache
   memoryCases.set(caseDoc.publicId, caseDoc);
 
@@ -23,6 +30,7 @@ async function saveCase(caseDoc) {
         { upsert: true, new: true, setDefaultsOnInsert: true },
       );
     } catch (error) {
+      if (process.env.NODE_ENV === 'production') throw error;
       console.warn('Failed to persist case to MongoDB, retained in memory:', error.message);
     }
   }
@@ -35,6 +43,7 @@ async function getCase(publicId) {
     return null;
   }
 
+  ensureDatabaseAvailable();
   if (isMongoConnected()) {
     try {
       const doc = await Case.findOne({ publicId }).select('+solution').lean();
@@ -43,6 +52,7 @@ async function getCase(publicId) {
         return doc;
       }
     } catch (error) {
+      if (process.env.NODE_ENV === 'production') throw error;
       console.warn('Failed to read case from MongoDB, using memory:', error.message);
     }
   }
@@ -51,10 +61,12 @@ async function getCase(publicId) {
 }
 
 async function listCases() {
+  ensureDatabaseAvailable();
   if (isMongoConnected()) {
     try {
       return await Case.find().lean();
     } catch (error) {
+      if (process.env.NODE_ENV === 'production') throw error;
       console.warn('Failed to list cases from MongoDB, using memory:', error.message);
     }
   }
