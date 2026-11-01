@@ -3,7 +3,6 @@ const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const dotenv = require('dotenv');
-const path = require('path');
 const { z } = require('zod');
 
 const { generateCaseFromGemini } = require('./services/generateCase');
@@ -315,16 +314,6 @@ app.get('/api/cases/:id/result', async (req, res) => {
 
   return res.json({ result: serializeResult(caseDoc) });
 });
-
-if (process.env.NODE_ENV === 'production') {
-  const clientBuildPath = path.resolve(__dirname, '../../client/dist');
-  app.use(express.static(clientBuildPath, { index: false }));
-  app.get(/^(?!\/api(?:\/|$)).*/, (_req, res, next) => {
-    res.sendFile(path.join(clientBuildPath, 'index.html'), (error) => {
-      if (error) next(error);
-    });
-  });
-}
 
 app.use((req, res) => {
   res.status(404).json({ code: 'NOT_FOUND', message: 'Resource not found.' });
